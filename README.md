@@ -4,9 +4,9 @@ An Apple II Musidisk by French Touch featuring "Sharpness Buzztone", one of the 
 
 v0.5 - 01/03/2020
    
-**music:** JESS/OVERLANDERS
-**code:** GROUiK
-**gfx:** GROUiK
+**music:** JESS/OVERLANDERS  
+**code:** GROUiK  
+**gfx:** GROUiK  
 
 **Web** (download the build here)  
 http://fr3nch.t0uch.free.fr/DD/DD.html 
@@ -35,6 +35,6 @@ You'll need the following tools:
 
 ### Missing tools
 
-The PYM format is an optimized YM format based on a recreated partition by analyzing patterns contained in a YM file. It uses only Packbits (RLE-like) compression.
-It is so inspired by the FYM format of fenarinarsa that I even took up its description! 
+The PYM format is an optimized YM format based on a recreated partition by analyzing patterns contained in a YM file. It uses only Packbits (RLE-like) compression.  
+It is so inspired by the FYM format of fenarinarsa that I even took up its description!   
 The generator is coded in Python and is a ultra secret tool! I will distribute it when I am no longer ashamed of the code...
