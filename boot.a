@@ -43,7 +43,7 @@ LOAD
 MODSLOT	JMP $C65C		; lecture par la routine en ROM carte Disk II 
 			; le retour se fait par le JMP $801 en sortie de cette routine
 			; attention utilisation de $26,$27,$2B,$3C,$3D,$40,$41       
-+	        ; BOOT 2 (MAIN)
++	; BOOT 2 (MAIN)
 	LDX #$00                
 	STX SECDEP	; sector
 	STX CURTRK1
@@ -58,7 +58,7 @@ MODSLOT	JMP $C65C		; lecture par la routine en ROM carte Disk II
 	
 	JMP MAIN		; saut Boot 2. Voilà c'est fini !                                        
 
-INIT	JSR $FC58	; HOME (ROM)
+INIT	JSR $FC58		; HOME (ROM)
 
 	; DETECTION A2
 	LDA #$00
@@ -76,7 +76,7 @@ INIT	JSR $FC58	; HOME (ROM)
 	BCS ++
 	JMP BADGUY	; si Carry not set IIGS => bad guy3
 	; wake up MB4C for IIc
-+           LDA #$FF
++	LDA #$FF
 	STA bIIc
 	STA $C403	; init MB4C
 	STA $C404
