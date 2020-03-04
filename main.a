@@ -8,8 +8,10 @@
 ; - "AN3 Trick"
 ;
 ; GROUiK / FRENCH TOUCH
+; fenarinarsa / FRENCH TOUCH
 ; 03/2020
 ;
+; v0.06 - IIc compatibility (Mockingboard 4c)
 ; v0.05 - bug of loop/tick reinit value fixed
 ; v0.04 - released first version
 ;
@@ -93,7 +95,7 @@ indexPat    = $89
 iREG0	= $8A
 iREG1	= $8B
 iREG2	= $8C
-iREG3	   = $8D
+iREG3	= $8D
 iREG4	= $8E
 iREG5	= $8F
 iREG6	= $90
@@ -174,23 +176,23 @@ MAIN
 	BIT $C057
 	BIT $C050
 ; =================================================================================================
-Init_MB	; init Mockingboard
+Init_MB     ; init Mockingboard             
 !zone
 	; init MB (6522/AY1) / (6522/AY2)
 	LDA #$FF
-	STA $C403	   ; DDRA1
+	LDX #$07
+	STA $C403          ; DDRA1
+	STX $C402          ; DDRB1
 	STA $C483
-	LDA #$07
-	STA $C402	   ; DDRB1
-	STA $C482
+	STX $C482
 	; ---------
 	; clean REGISTER AY1 / AY2
 	LDA #$00
+	LDX #$04
 	STA $C400
+	STX $C400
 	STA $C480
-	LDA #$04
-	STA $C400
-	STA $C480
+	STX $C480
 	; ---------
 	LDA #PATTERNSIZE
 	STA count1Pat
@@ -199,62 +201,97 @@ Init_MB	; init Mockingboard
 	STA Tick+1
 	STA indexPat
 	STA voice
-	TAX		; = 0 - init with pattern 0
+	TAX                 ; = 0 - init with pattern 0
 	JSR INIT_PATTERN
 ; -------------------------------------
 Init_INT	; init interrupt
-!zone
-	; pour IIe
+!zone       
+	; pour IIe 
 	LDA #<INT_ROUT
-	STA $FFFE
+	STA $FFFE       
 	LDA #>INT_ROUT
 	STA $FFFF
 
-	SEI		; inhib
+	SEI                 ; inhib
+
+	LDA bIIc
+	BEQ .InitIIe
+
+.InitIIc	; IIc with mockingboard 4c has only one 6522 T_T
+	; T1 = digidrums
+	; T2 = player (with some drift)
+	LDA #%01000000      ; T1 Continuous Interrupt (Free-Run Mode) / PB7 disabled / T2 timed interrupt 
+	STA $C40B           ; Auxiliary Control Register (T1/6522/1)
+	LDA #%01100000      ; T1 Disable / T2 disable
+	STA $C40E           ; IER (T1/6522/1)
+
+	CLI
+	LDX #$36                                                        
+	LDY #$4F                                                                   
+	STX $C408		; T2C_1-Lower                    
+	STY $C409		; T2C_1-High  (+reset interrupt flag)    
+	JMP LOOP
+
+.InitIIe
 	; Set INT
-	LDA #%01000000	; T1 Continuous Interrupt (Free-Run Mode) / PB7 disabled
-	STA $C40B		; Auxiliary Control Register (T1/6522/1)
-	STA $C48B		; ACR (T1/6522/2)
-	LDA #%11000000	; T1 Enable
-	STA $C40E		; Interrupt Enable Register (T1/6522/1)
+	LDA #%01000000      ; T1 Continuous Interrupt (Free-Run Mode) / PB7 disabled 
+	STA $C40B           ; Auxiliary Control Register (T1/6522/1)
+	STA $C48B           ; ACR (T1/6522/2) 
+	LDA #%11000000      ; T1 Enable
+	STA $C40E           ; Interrupt Enable Register (T1/6522/1)
+	
+	LDA #%01000000      ; T1 Disable
+	STA $C48E           ; IER (T1/6522/2)
 
-	LDA #%01000000	; T1 Disable
-	STA $C48E		; IER (T1/6522/2)
-; =================================================================================================
-	CLI		; music!
-
+; =================================================================================================            
+	CLI                         ; music!
+	
 -	LDA VERTBLANK
-	BPL -
+	BPL -        
 -	LDA VERTBLANK
-	BMI -		; wait until next VBL
+	BMI -                       ; wait until next VBL
 
-	; 50Hz PAL Delay
-	; fill registers for TIMER only (no INT here) - T1/6522/2
-	LDX #$36
-	LDY #$4F
-	STX $C484		; T1C_1-Lower
-	STY $C485		; T1C_1-High  (+reset interrupt flag)
+	; 50Hz PAL Delay 
+	; fill registers for TIMER only (no INT here) - T1/6522/2 
+	LDX #$36                                                        
+	LDY #$4F                                                                   
+	STX $C484                   ; T1C_1-Lower                    
+	STY $C485                   ; T1C_1-High  (+reset interrupt flag)                      
 
-LOOP	LDA $C48D
-	AND #%01000000
-	BEQ LOOP		; test bit6 -> T1 timer reach 0 (T1/6522/2)
+	; IIe: T1/6522/2
+LOOP	LDA bIIc
+	BNE .LoopIIc
+
+.LoopIIe	LDA $C48D
+	AND #%01000000                   
+	BEQ .LoopIIe                ; test bit6 -> T1 timer reach 0 (T1/6522/2)   
 
 	; clear bit6 of the IFR
-	BIT $C484		; T1/6522/2
+	BIT $C484                   ; T1/6522/2
+	JMP LOOP_PLAY
 
+	; IIc: T2/6522/1
+.LoopIIc	LDA $C40D
+	AND #%00100000                   
+	BEQ .LoopIIc                ; test bit5 -> T1 timer reach 0 (T1/6522/1)
+													
+	LDY #$4F                                                                                  
+	STY $C409                   ; T2C_1-High  (+reset interrupt flag) + also reloads T2C_1_Lower
+
+LOOP_PLAY
 	; play one tick
 	JSR PLAYER_PYM
-	INC Tick		; inc frame counter
-	BNE +
-	INC Tick+1
+	INC Tick                    ; inc frame counter                                             
+	BNE +                                                                               
+	INC Tick+1                                                                  
 +	LDA Tick+1
-	CMP #>FRAMEMAX
+	CMP #>FRAMEMAX 
 	BNE LOOP
 	LDA Tick
 	CMP #<FRAMEMAX
 	BNE LOOP
 
-	; set loop position
+; set loop position
 	LDA #PATTERNSIZE
 	STA count1Pat
 	LDX #PATLOOP
@@ -265,38 +302,46 @@ LOOP	LDA $C48D
 	LDA #>TICKLOOP
 	STA Tick+1
 	JMP LOOP
+
 ; =================================================================================================
-INT_ROUT
-!zone
+INT_ROUT    
+!zone                       
 	STA saveA
 	STX saveX
 	STY saveY
 	LDY #00
 	LDA (pDrum),Y
-	BMI .endINT2	; end of digidrum
+	BMI .endINT2        ; end of digidrum
 	STA tempp
+	LDY bIIc
+	BNE +
 	LDY VERTBLANK
 	BMI +
 	STA $C05E
-+	LDY #$07
++           
+	LDY #$07
 	LDX #$04
 	LDA voice
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA tempp
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA voice
+	LDY #$07
 	STA $C481
 	STY $C480
 	STX $C480
-
+	LDA tempp
+	LDY #$06
+	STA $C481
+	STY $C480
+	STX $C480
+	
 	INC pDrum		; prepare next data sample
 	BNE +
 	INC pDrum+1
@@ -304,10 +349,10 @@ INT_ROUT
 	BIT $C404		; INT again (T1/6522/1)
 	LDA saveA
 	LDX saveX
-	LDY saveY
+	LDY saveY 
 	RTI
 
-.endINT2	LDA #%01000000      ; stop INT (T1/6522/1)
+.endINT2	LDA #%01000000	; stop INT (T1/6522/1)
 	STA $C40E		; VIA_IER
 	LDA #00
 	STA voice
@@ -316,31 +361,40 @@ INT_ROUT
 	LDY saveY
 	RTI
 ; =================================================================================================
-PLAYER_PYM
+PLAYER_PYM					
 !zone
+	LDY bIIc
+	BNE .r0
 	LDA VERTBLANK
 	BMI .r0
-	STA $C05F
-.r0	SEI
-	; REGISTER 0
-	LDA #$00
-	LDY #$07
-	LDX #$04
-	STA $C401
-	STY $C400
-	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
+	STA $C05F   
+.r0     
 
+	SEI
+	; REGISTER 0
+	LDX #$04
+	LDA #$00				
+	LDY #$07
+
+	STA $C401		;reg#
+	STY $C400		;func set reg# 7
+	STX $C400		;func inactive 4		
 	LDA vREG0
 	LDY #$06
-	STA $C401
-	STY $C400
-	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
+	STA $C401		;value
+	STY $C400		;func set value 6
+	STX $C400		;func inactive 4
+
+	LDA #$00		; On IIc/MB4c the two AY must be programmed sequentially		
+	LDY #$07		; because there's only one 6522
+	STA $C481		;reg#		
+	STY $C480		;func set reg#
+	STX $C480		;func inactive
+	LDA vREG0
+	LDY #$06
+	STA $C481   				
+	STY $C480   		
+	STX $C480   		
 	CLI
 
 	DEC nREG0
@@ -353,23 +407,27 @@ PLAYER_PYM
 	STA vREG0
 	INY
 	STY iREG0
-
+	
 .r1	SEI
 	; REGISTER 1
-	LDA #$01
+	LDA #$01				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG1
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$01
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG1
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -385,23 +443,27 @@ PLAYER_PYM
 	STA vREG1
 	INY
 	STY iREG1
-
+	
 .r2	SEI
 	; REGISTER 2
-	LDA #$02
+	LDA #$02				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG2
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$02
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG2
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -420,20 +482,24 @@ PLAYER_PYM
 
 .r3	SEI
 	; REGISTER 3
-	LDA #$03
+	LDA #$03				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG3
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$03
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG3
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -452,20 +518,24 @@ PLAYER_PYM
 
 .r4	SEI
 	; REGISTER 4
-	TXA		; LDA #$04
+	TXA		; LDA #$04				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG4
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	TXA
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG4
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -484,20 +554,24 @@ PLAYER_PYM
 
 .r5	SEI
 	; REGISTER 5
-	LDA #$05
+	LDA #$05				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG5
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$05
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG5
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -516,20 +590,24 @@ PLAYER_PYM
 
 .r6	SEI
 	; REGISTER 6
-	LDA #$06
+	LDA #$06				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG6
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$06
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG6
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -548,20 +626,24 @@ PLAYER_PYM
 
 .r7	SEI
 	; REGISTER 7
-	LDA #$07
+	LDA #$07				
 	TAY		; LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG7
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$07
+	TAY
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREG7
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -588,20 +670,23 @@ PLAYER_PYM
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
-	LDY #$06
 	LDA vREG8
+	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
-	LDA vREG8
-	LSR
+	STX $C400   
+
+	LDA #$08
+	LDY #$07
 	STA $C481
 	STY $C480
 	STX $C480
+	LDA vREG8
+	LSR
+	LDY #$06
+	STA $C481
+	STY $C480
+	STX $C480   
 	CLI
 +
 	DEC nREG8
@@ -620,24 +705,28 @@ PLAYER_PYM
 	BEQ +
 	SEI
 	; REGISTER 9
-	LDA #$09
+	LDA #$09				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREG9
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$09	
+	LDY #$07
 	STA $C481
 	STY $C480
 	STX $C480
-	CLI
+	LDA vREG9
+	LDY #$06
+	STA $C481
+	STY $C480
+	STX $C480
+	CLI	
 +
 	DEC nREG9
 	BNE .ra
@@ -660,17 +749,20 @@ PLAYER_PYM
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
-	LDY #$06
 	LDA vREGA
 	LSR
+	LDY #$06
 	STA $C401
 	STY $C400
 	STX $C400
+
+	LDA #$0A
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
 	LDA vREGA
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -689,20 +781,24 @@ PLAYER_PYM
 
 .rb	SEI
 	; REGISTER 11
-	LDA #$0B
+	LDA #$0B				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREGB
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$0B
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREGB
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -726,20 +822,24 @@ PLAYER_PYM
 	CMP #$FF
 	BEQ .rdb
 	SEI
-	LDA #$0D
+	LDA #$0D				
 	LDY #$07
 	STA $C401
 	STY $C400
 	STX $C400
-	STA $C481
-	STY $C480
-	STX $C480
-
 	LDA vREGD
 	LDY #$06
 	STA $C401
 	STY $C400
-	STX $C400
+	STX $C400   
+
+	LDA #$0D	
+	LDY #$07
+	STA $C481
+	STY $C480
+	STX $C480
+	LDA vREGD
+	LDY #$06
 	STA $C481
 	STY $C480
 	STX $C480
@@ -755,7 +855,7 @@ PLAYER_PYM
 	STA vREGD
 	INY
 	STY iREGD
-
+	
 .re	; "REGISTER" E	; containing digidrum information (0xXY => X voice-reg# | Y digidrum#)
 	LDA vREGE		; is beginning of digidrum this frame ?!
 	BEQ +
@@ -776,15 +876,15 @@ PLAYER_PYM
 	LSR
 	STA voice
 	; init DIGIDRUM INT (T1/6522/1)
-	LDA #%11000000
-	STA $C40E			; interrupt Enable register (Timer 1 + Set) (T1/6522/1)
+	LDA #%11000000      
+	STA $C40E			; interrupt Enable register (Timer 1 + Set) (T1/6522/1) 
 	; set TIMER delay (T1/6522/1)
 	LDA #<(DELAYDIGI-2)
-	STA $C404			; T1C_1-Lower
+	STA $C404			; T1C_1-Lower    
 	LDA #>(DELAYDIGI-2)
-	STA $C405			; T1C_1-High
+	STA $C405			; T1C_1-High 
 	CLI
-	; ---------
+	; ---------                      
 +	DEC nREGE
 	BNE .checkpattern
 	LDY iREGE
@@ -795,7 +895,7 @@ PLAYER_PYM
 	STA vREGE
 	INY
 	STY iREGE
-
+	
 .checkpattern
 	DEC count1Pat	; end of ONE pattern ?
 	BEQ +		; if yes, next pattern!
