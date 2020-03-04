@@ -2,7 +2,7 @@
 
 An Apple II Musidisk by French Touch featuring "Sharpness Buzztone", one of the mythical track of the Atari ST!
 
-v0.6 - 04/03/2020
+v0.6 - 04/03/2020  
    
 **music:** JESS/OVERLANDERS  
 **code:** GROUiK / fenarinarsa 
