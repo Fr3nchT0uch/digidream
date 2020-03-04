@@ -35,9 +35,9 @@ Mockingboard 4C (IIc)
 You'll need the following tools:  
 - ACME Cross-Assembler v0.96.4
 - DirectWrite (http://fr3nch.t0uch.free.fr/)
-- make/nmake
-
-
+- make/nmake  
+- LZ4.exe (v1.3.3 only)  
+ 
 ### Missing tools
 
 The PYM format is an optimized YM format based on a recreated partition by analyzing patterns contained in a YM file. It uses only Packbits (RLE-like) compression.  
