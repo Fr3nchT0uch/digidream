@@ -46,8 +46,6 @@ GFX: gfx\PI.1 gfx\PI.2
 
 clean:
 	@echo "cleaning..."
-	del boot.b
-	del fload.b
-	del drum.b
-	del main.b
+	rm *.b
+
 	
