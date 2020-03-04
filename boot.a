@@ -2,7 +2,7 @@
 ; boot.a
 ; boot0 (T0/S0) / boot1 (FLOAD) / boot2 (MAIN) 
 ; 
-; 0.06: MB4C activation fix
+; 0.06: MB4C activation fix / main part loading fix 
 ; 0.05: SPECIAL IIc/MB4C (no more IIe refresh detection)
 ; 0.04: I don't care about SLOT# anymore I assume it's 6! 
 ;
@@ -52,7 +52,7 @@ MODSLOT	JMP $C65C		; lecture par la routine en ROM carte Disk II
 	STX PISDEP	; track 
 	LDA #>MAIN	; 
 	STA BUFFER+1	; buffer high = $D00
-	LDA #18		;  TO CHECK
+	LDA #08		; 
 	STA TOTSEC              
 	JSR FLOAD		; loading
 	
