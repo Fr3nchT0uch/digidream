@@ -5,7 +5,7 @@ An Apple II Musidisk by French Touch featuring "Sharpness Buzztone", one of the 
 v0.6 - 04/03/2020  
    
 **music:** JESS/OVERLANDERS  
-**code:** GROUiK / fenarinarsa 
+**code:** GROUiK / fenarinarsa  
 **gfx:** GROUiK  
 
 
