@@ -2,6 +2,7 @@
 ; boot.a
 ; boot0 (T0/S0) / boot1 (FLOAD) / boot2 (MAIN) 
 ; 
+; 0.06: MB4C activation fix
 ; 0.05: SPECIAL IIc/MB4C (no more IIe refresh detection)
 ; 0.04: I don't care about SLOT# anymore I assume it's 6! 
 ;
@@ -17,6 +18,7 @@
 ; =============================================================================
 ; =============================================================================
 ; ZERO PAGE individual
+bIIc    = $01 
 OUT2        = $12   ; +$13
 Temp        = $FF
 ; =============================================================================
@@ -60,6 +62,8 @@ MODSLOT		JMP $C65C			    ; lecture par la routine en ROM carte Disk II
 INIT	    JSR $FC58			    ; HOME (ROM)
 
             ; DETECTION A2
+            LDA #$00
+            STA bIIc
             LDA $FBB3
             CMP #$06                ; IIe/IIc/IIGS = 06 
             BEQ +
@@ -73,7 +77,9 @@ INIT	    JSR $FC58			    ; HOME (ROM)
             BCS ++
             JMP BADGUY              ; si Carry not set IIGS => bad guy3
             ; wake up MB4C for IIc
-+           STA $C403           ; init MB4C
++           LDA #$FF
+            STA bIIc
+            STA $C403           ; init MB4C
             STA $C404
 ++
             ; DETECTION MB (->OUT2)
