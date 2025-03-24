@@ -26,7 +26,7 @@ Apple IIe NTSC (untested on real hardware)
 Mockingboard 2 / MegaAudio / Phasor (Mockingboard compatibility mode) 
 
 Apple IIc PAL  
-Apple IIc NTSC (untested on real hardware)  
+Apple IIc NTSC
 Mockingboard 4C (IIc)  
 
 
